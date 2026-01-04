@@ -46,8 +46,19 @@ def save_demonstrations(data_folder, actions, observations):
     observations:   python list of N numpy.ndarrays of size (96, 96, 3)
     actions:        python list of N numpy.ndarrays of size 3
     """
+    if not os.path.exists(data_folder):
+        os.makedirs(data_folder)
+    
+    # find index of existing files to avoid overwriting
+    existing_files = os.listdir(data_folder)
+    existing_indices = [int(f.split('_')[1].split('.')[0]) for f in existing_files if f.startswith('observation_')]
+    start_index = max(existing_indices) + 1 if existing_indices else 0
 
-    pass
+    for i, (action, observation) in enumerate(zip(actions, observations)):
+        obs_path = os.path.join(data_folder, f'observation_{start_index + i}.npy')
+        act_path = os.path.join(data_folder, f'action_{start_index + i}.npy')
+        np.save(obs_path, observation)
+        np.save(act_path, action)
 
 
 class ControlStatus:
@@ -136,7 +147,7 @@ def record_demonstrations(demonstrations_folder):
     env.close()
 
 if __name__ == "__main__":
-    data_folder = "./data"
+    data_folder = "./new_data"
     ob, ac = load_demonstrations(data_folder)
     print(f"Loaded {len(ob)} observations and {len(ac)} actions.")
     unique_actions = set()
