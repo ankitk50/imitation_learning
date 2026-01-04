@@ -2,3 +2,5 @@
 Score after running 'python main.py --score':
 submission1 : 154.56
     model: agent_v1.pth
+submission2 : 241
+    model: agent_v2.pth

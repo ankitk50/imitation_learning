@@ -18,7 +18,8 @@ class ClassificationNetwork(torch.nn.Module):
         # setting device on GPU if available, else CPU
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.model = torch.nn.Sequential(
+        # CNN layers for image processing
+        self.cnn = torch.nn.Sequential(
             # 1st conv layer
             torch.nn.Conv2d(in_channels=3, out_channels=32, kernel_size=8, stride=4, padding=2),
             torch.nn.LeakyReLU(negative_slope=0.2),
@@ -28,9 +29,12 @@ class ClassificationNetwork(torch.nn.Module):
             # 3rd conv layer
             torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
             torch.nn.LeakyReLU(negative_slope=0.2),
-            # fully connected layers
-            torch.nn.Flatten(),
-            torch.nn.Linear(in_features=64 * 12 * 12, out_features=512),
+            torch.nn.Flatten()
+        ).to(self.device)
+        
+        # Fully connected layers - now taking CNN features (64*12*12) + sensor values (1+4+1+1=7)
+        self.fc = torch.nn.Sequential(
+            torch.nn.Linear(in_features=64 * 12 * 12 + 7, out_features=512),
             torch.nn.LeakyReLU(negative_slope=0.2),
             torch.nn.Linear(in_features=512, out_features=256),
             torch.nn.LeakyReLU(negative_slope=0.2),
@@ -52,18 +56,30 @@ class ClassificationNetwork(torch.nn.Module):
         observation:   torch.Tensor of size (batch_size, 96, 96, 3)
         return         torch.Tensor of size (batch_size, C)
         """
+        batch_size = observation.shape[0]
+        
         # Convert from (batch_size, H, W, C) to (batch_size, C, H, W)
-        observation = observation.permute(0, 3, 1, 2)
+        observation_permuted = observation.permute(0, 3, 1, 2)
         
         # Normalize to [0, 1] if not already normalized
-        if observation.dtype == torch.uint8:
-            observation = observation.float() / 255.0
+        if observation_permuted.dtype == torch.uint8:
+            observation_permuted = observation_permuted.float() / 255.0
         
         # Move to device
+        observation_permuted = observation_permuted.to(self.device)
         observation = observation.to(self.device)
         
-        # Forward pass through the network
-        return self.model(observation)
+        # Extract CNN features
+        cnn_features = self.cnn(observation_permuted)
+        
+        # Extract sensor values from original observation
+        speed, abs_sensors, steering, gyroscope = self.extract_sensor_values(observation, batch_size)
+        
+        # Concatenate CNN features with sensor values
+        combined_features = torch.cat([cnn_features, speed, abs_sensors, steering, gyroscope], dim=1)
+        
+        # Forward pass through fully connected layers
+        return self.fc(combined_features)
 
     def actions_to_classes(self, actions):
         """
