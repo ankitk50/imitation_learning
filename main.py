@@ -23,7 +23,7 @@ def evaluate(args, trained_network_file):
     """
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    infer_action = torch.load(trained_network_file, map_location=device)
+    infer_action = torch.load(trained_network_file, map_location=device, weights_only=False)
     infer_action.eval()
 
     render_mode = 'rgb_array' if args.no_display else 'human'
@@ -46,7 +46,7 @@ def evaluate(args, trained_network_file):
 
             steer, gas, brake = infer_action.scores_to_action(action_scores)
 
-            observation, reward, done, trunc, info = env.step([steer, gas, brake])
+            observation, reward, done, trunc, info = env.step(np.array([steer, gas, brake]))
             reward_per_episode += reward
 
         print('episode %d \t reward %f' % (episode, reward_per_episode))
@@ -63,11 +63,11 @@ def calculate_score_for_leaderboard(args, trained_network_file):
     # setting device on GPU if available, else CPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    infer_action = torch.load(trained_network_file, map_location=device)
+    infer_action = torch.load(trained_network_file, map_location=device, weights_only=False)
     infer_action.eval()
 
     render_mode = 'rgb_array' if args.no_display else 'human'
-    env = SDC_Wrapper(gym.make('CarRacing-v2', render_mode=render_mode), remove_score=True,
+    env = SDC_Wrapper(gym.make('CarRacing-v3', render_mode=render_mode), remove_score=True,
                       return_linear_velocity=False)
 
     seeds = [22597174, 68545857, 75568192, 91140053, 86018367,
@@ -89,11 +89,11 @@ def calculate_score_for_leaderboard(args, trained_network_file):
                     np.ascontiguousarray(observation[None])).to(device))
 
                 steer, gas, brake = infer_action.scores_to_action(action_scores)
-                observation, reward, done, trunc, info = env.step([steer, gas, brake])
+                observation, reward, done, trunc, info = env.step(np.array([steer, gas, brake]))
                 reward_per_episode += reward
 
             print('episode %d \t reward %f' % (episode, reward_per_episode))
-            total_reward += np.clip(reward_per_episode, 0, np.infty)
+            total_reward += np.clip(reward_per_episode, 0, np.inf)
 
     print('---------------------------')
     print(' total score: %f' % (total_reward / len(seeds)))
@@ -122,19 +122,19 @@ if __name__ == "__main__":
     main_parser.add_argument(
         "--agent_load_path",
         type=str,
-        default="agent.pth",
+        default="models/agent.pth",
         help="Path to the .pth file of the trained agent."
     )
     main_parser.add_argument(
         "--agent_save_path",
         type=str,
-        default="agent.pth",
+        default="models/agent.pth",
         help="Save path of the trained model."
     )
     main_parser.add_argument(
         "--training_data_path",
         type=str,
-        default="data",
+        default="data/data_v2",
         help="Save path of the trained model."
     )
 
