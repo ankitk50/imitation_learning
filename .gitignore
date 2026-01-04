@@ -4,3 +4,4 @@ data
 *.pth
 *.zip
 .DS_Store
+.vscode

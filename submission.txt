@@ -1,5 +1,4 @@
-Team name:
-Name 1:
-Name 2:
 
 Score after running 'python main.py --score':
+submission1 : 154.56
+    model: agent_v1.pth
