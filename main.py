@@ -160,6 +160,12 @@ if __name__ == "__main__":
         action="store_true",
         default=False
     )
+    main_parser.add_argument(
+        "--binary",
+        action="store_true",
+        default=False,
+        help="Use binary classification network (4 independent binary outputs) instead of multi-class."
+    )
 
     args = main_parser.parse_args()
 
